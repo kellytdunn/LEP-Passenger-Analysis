@@ -1,0 +1,148 @@
+---
+title: "Passenger Experience Analysis"
+author: "Kelly Dunn"
+date: "January 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+getwd()
+```
+
+## Introduction
+
+What makes a transit passenger more or less satisfied with their experience? For this study, I wanted to know how Sound Transit riders with Limited English Proficiency (LEP) compare to the general rider population in their satisfaction with Sound Transit, particularly with the quality of information we provide our passengers. We are currently undertaking a larger study to understand how well we serve LEP populations and what we can do better. Though we provide translations of key documents where required by law or where deemed essential, not all rider communications get translated. I wondered how this would affect a LEP rider’s experience. A recent passenger survey asked passengers to give Sound Transit an academic grade for a variety of metrics related to how they experience our transit system. I suspected that LEP riders might rate us slightly lower than other riders would because it is more difficult for them to access important updates or general information about how to ride, particularly when there are last-minute interruptions, and this can cause frustration and dissatisfaction. 
+
+My research question is “To what extent does having Limited English Proficiency influence a respondent’s grade for quality of information provided by Sound Transit?”
+
+## Materials and Methods
+The data set is the 2021 Passenger Experience Survey from Sound Transit. This survey of 4890 current Sound Transit riders captures riders’ opinions on how Sound Transit is performing on a variety of metrics. The data was collected in October and November 2021 by a consultant working for Sound Transit. Survey participants were recruited via the Sound Transit website, text and email messages to rider alert subscribers, and in-person at bus stops and train stations. 
+There are 371 fields present in the entire data set, but the fields most of interest to this study are:
+
+* EnglishOnly (categorical): Whether the respondent only speaks English at home, or speaks another language.
+* EnglishProficiency (categorical, ordinal): If the respondent indicates that they do not only speak English at home, they are asked how well they speak English: “very well,” “well,” “not very well,” or “not at all.” 
+* LEP: a dummy variable I created, using inputs from EnglishOnly and EnglishProficiency, to denote anyone who rated their English proficiency as less than “very well. ” LEP individuals were given a 1 and any individual proficient in English was given a 0. I use this as the predictor variable for the primary analysis. 
+* overallGradeInformation (numeric, continuous): This is the satisfaction grade that the respondent gave Sound Transit for quality of information that it provides its passengers. It is an average of seven sub-metrics related to information for which they assigned a grade to each one. I use this as the dependent variable. The range is from 0 (F) to 4.3 (A+) and aligns with academic grades. 
+* yearsRidingGroup (categorical, ordinal): Explanatory variable for the secondary analysis. Respondents were asked how long they have been a Sound Transit rider, and responses were binned as follows: 
+ + (1) <1 year; 
+ + (2) 1 - <3 years; 
+ + (3) 3 - <5 years; 
+ + (4) 5+ years; 
+ + (5) no information given
+
+## Statistical Approach
+This analysis uses a linear model to determine the extent to which a respondent having Limited English Proficiency is associated with a difference in their satisfaction with the information that Sound Transit provides. I also look at some other variables that may interact.
+
+**Model 1 Hypothesis to be tested**: There is no difference in the rating given by LEP riders compared to English proficient riders with regards to the quality of information that Sound Transit provides its customers.
+
+**Model 1  Alternative hypothesis**: There is a difference in the rating given by LEP riders compared to English proficient riders with regards to the quality of information that Sound Transit provides its customers. 
+
+For the second linear model, I identified yearsRidingGroup as a potential confounding variable and adjusted for it. I reasoned that years riding would likely make someone less dependent on information provided by Sound Transit as they grow more comfortable with riding transit and learn the system. At the same time, people who have been riding for longer are likely to have been in the United States for longer, and therefore may tend to be more proficient in English. 
+
+**Model 2 Hypothesis to be tested**: After adjusting for the number of years the respondent has ridden Sound Transit, there is no difference in the rating given by LEP riders compared to English proficient riders with regards to the quality of information that Sound Transit provides its customers. 
+
+**Model 2 Alternative hypothesis**: After adjusting for the number of years the respondent has ridden Sound Transit, there is a difference in the rating given by LEP riders compared to English proficient riders with regards to the quality of information that Sound Transit provides its customers. 
+For the potential confounding variable, I created a linear model and also tested for homoskedasticity and normality of the residuals. 
+
+I also thought of other potential confounding variables for which I did not have data. These included length of time in the country. Additionally, poverty or access to technology are possible mediator variables. No adjustment was done for mediator variables. 
+
+
+## Results
+
+### Descriptive Statistics
+I began by exploring the data and ensuring that I had enough LEP respondents in the survey to do a thorough analysis.
+
+```{r}
+data = read.csv("PXSdata.csv")
+hist(data$LEP, main = "LEP Status of Survey Respondents", xlab = "LEP status")
+```
+```{r}
+
+table(data$LEP, dnn = "LEP status")
+```
+```{r}
+summary(data$LEP)
+```
+As shown here, LEP individuals account for 720 respondents, or 14.7% of the total. 
+
+I then plotted the distribution of the variable overallGradeInformation. It is not normally distributed; it skews left, indicating mostly high values with a few very low values. The mode is between 3.5 and 4.0. 
+```{r}
+hist(data$overallGradeInformation, xlab = "Grade", main = "Distribution of Information Grades, All Respondents")
+```
+
+I also do a boxplot to compare grades of LEP riders with English Proficient riders.
+```{r}
+boxplot(data$overallGradeInformation ~ data$LEP, ylab = "Information Grade", xlab = "LEP status", names = c("English Proficient", "LEP"), main = "Information Grades by LEP status")
+```
+
+Distribution of grades varies slightly by LEP status. The median grade given by English proficient riders is slightly higher than for LEP riders, with each quartile value also slightly higher, as shown in Figure 2. Both groups have similar ranges spanning from zero to 4.3. 
+
+### Building the Linear Model 
+For model 1, I model the relationship between LEP status and overallGradeInformation. 
+
+```{r}
+model1 <- lm(data$overallGradeInformation ~ LEP, data=data)
+summary(model1)
+```
+For English proficient respondents, the average Information grade given was 2.91, shown above. For LEP respondents, the average grade differed by -.18 points, at 2.73. The low p values at the right column indicate that this difference is significant. 
+
+### Checking Assumptions
+It's always a good idea to check my assumptions to see if a linear model was the best fit for this data. 
+
+```{r}
+model1$fitted.values <- factor(model1$fitted.values)
+boxplot(model1$residuals ~ model1$fitted.values, xlab = "Fitted Values", ylab = "Residuals", main = "Residuals by Fitted Values", names = c("2.73", "2.91", "", ""))
+```
+
+This plot shows that for both fitted values, 2.73 and 2.91, the residual plots had similar spreads, meaning that variance was about the same for both fitted values. Thus, there is no evidence of heteroskedasticity, which would indicate that this model might not be the best choice. However, I can see that the residuals are not normally distributed. 
+
+I confirm this with a QQ plot of residuals of predicted values compared to the residuals we would expect if the residuals were normally distributed. 
+```{r}
+qqnorm(resid(model1))
+qqline(resid(model1))
+```
+
+The QQ plot shows the values are not quite normally distributed, with deviations mostly in the tails. If residuals were normally distributed, they would follow the superimposed straight line. However, given that this data has a large sample size and I am not using it for predictive purposes, I think that the assumption of normal residuals is adequately met here. 
+
+## Secondary Analysis
+
+For a secondary analysis (model 2), I adjust for yearsRidingGroup to test if this has an effect. This variable indicates how long the respondent has been a Sound Transit rider. First, I explore the yearsRidingGroup variable to make sure I have enough data to work with. 
+
+```{r}
+hist(as.numeric(data$yearsRidingGroup), xlab = "Years Riding Group", main = "Distribution of Years Riding, All Respondents", labels = c("<1 year", "1 - 3 years", "", "3 - 5 years", "", "5+ years", "", "NA"))
+```
+```{r}
+table(data$yearsRidingGroup, data$LEP, dnn = c("Years Riding category", "LEP Status"))
+```
+Survey responses were coded as such: 
+
+* <1 year;
+* 1 - <3 years; 
+* 3 - <5 years; 
+* 5+ years; 
+* no info.
+
+I can see that among LEP riders (column "1"), there were only 49 respondents who had been riding less than a year. R will, by default, use this as the comparison category when running a model. That's not ideal, because the sample size is relatively low, so it's less likely to find significant results. I am going to change the default so that R will use riders who have been riding for 5 + years as the comparison. 
+
+```{r}
+data$yearsRidingGroup = factor(data$yearsRidingGroup, ordered = FALSE)
+data$yearsRidingGroup_new = relevel(data$yearsRidingGroup, "4")
+
+model2 <- lm(data$overallGradeInformation ~ LEP + yearsRidingGroup_new, data=data)
+summary(model2)
+```
+The output shows that for a change between English proficient (LEP = 0) and LEP riders (LEP = 1), the information grade decreases on average by .18 points adjusting for number of years riding (p < .001). This means that within each group of YearsRidingGroup, the average change in information grade between English proficient and LEP riders is -.18. Since this is about the same as the slope before adjusting for years riding, yearsRidingGroup does not seem to be a confounding variable. 
+
+The model also shows that as years riding increases from < 1 year to 1-3 years, information grade decreases on average by .09. However, once a rider (regardless of LEP status) has been riding for more than one year, any additional years riding has little effect on the average information grade. These p-values are not significant, so we cannot reject the null hypothesis that there is no difference in information grade between LEP and English Proficient riders after adjusting for years riding. This could mean that years riding has no effect on a respondent's grade, or it could be that there is not enough data to conclude otherwise. 
+
+## Discussion
+The data suggest that LEP riders do rate Sound Transit somewhat lower than English proficient riders for the quality of information that ST provides its riders. However, while this difference may be statistically significant, it is not necessarily meaningful; both 2.91 and 2.73 equate to a B minus on the academic scale. In my opinion, this may be reason to conduct further research on how to better serve LEP passengers, but it is not necessarily an indicator that we serve them less well than we serve other passengers. Nonetheless, a B minus still shows room for improvement, so any improvements that we make for the general population may well serve LEP riders just as well. 
+
+## Strengths and Limitations
+A strength of this data set was the relatively large sample size (n=4890), including a substantial number of LEP riders. 
+However, a limitation is that budget and the ongoing pandemic limited our ability to conduct a random sample for this survey. A random sample of current riders would require surveying to be done solely on-board randomly selected transit vehicles and to achieve a high response rate. While some in-person surveying was done at transit stations and onboard, recruitment for this survey relied heavily on text and email notifications to subscribers of transit alerts. Therefore, this sample likely suffers from selection bias. 
+
+Selection bias may have also affected LEP riders specifically. Though the survey was translated into six key languages prevalent in the region, LEP riders may have been less likely to engage with outreach staff or to read outreach materials in the first place, particularly if they did not speak one of the six translated languages. Therefore, those that did engage may be more likely than average to feel comfortable using and seeking information from Sound Transit. 
+This model also calculates one slope for all groups in YearsRidingGroup. A more robust model might calculate different slopes to allow for the possibility that having Limited English Proficiency has a different effect on information grade for less experienced riders than it does for more experienced riders. 
+Additionally, there are other variables that could be confounders; additional analysis may identify some of these variables. 
